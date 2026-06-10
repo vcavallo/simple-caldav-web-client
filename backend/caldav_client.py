@@ -347,7 +347,9 @@ class CalDavClient:
         headers = {}
         if if_match:
             headers["If-Match"] = if_match
-        resp = dav.delete(url, headers)
+        # DAVClient.delete() takes only a url; route through request() so the
+        # If-Match header (ETag concurrency check) is actually sent.
+        resp = dav.request(url, "DELETE", headers=headers)
         self._raise_for_status(resp)
         return resp
 
