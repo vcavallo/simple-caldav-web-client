@@ -40,6 +40,28 @@ class Config:
         return None
 
 
+def _resolve_password(index: int, entry: dict) -> str:
+    """Resolve a calendar's password.
+
+    Precedence (highest first):
+      1. CALDAV_CAL_<index>_PASSWORD environment variable
+      2. `password_file`: path to a file holding the password (newline stripped)
+      3. inline `password`
+    """
+    env = os.environ.get(f"CALDAV_CAL_{index}_PASSWORD")
+    if env is not None:
+        return env
+
+    pw_file = entry.get("password_file")
+    if pw_file:
+        pw_path = Path(os.path.expanduser(pw_file))
+        if not pw_path.exists():
+            raise FileNotFoundError(f"password_file not found: {pw_path}")
+        return pw_path.read_text().strip()
+
+    return entry.get("password", "")
+
+
 def load_config(path) -> Config:
     path = Path(path)
     if not path.exists():
@@ -48,10 +70,7 @@ def load_config(path) -> Config:
     raw = yaml.safe_load(path.read_text()) or {}
     calendars: List[Calendar] = []
     for index, entry in enumerate(raw.get("calendars", [])):
-        password = os.environ.get(
-            f"CALDAV_CAL_{index}_PASSWORD",
-            entry.get("password", ""),
-        )
+        password = _resolve_password(index, entry)
         calendars.append(Calendar(
             id=entry.get("id", ""),
             name=entry["name"],

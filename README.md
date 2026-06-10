@@ -43,9 +43,13 @@ cp config.example.yaml config.yaml
 
 Each calendar's `id` is derived from its name (lowercased, alphanumerics only) —
 e.g. `"Yellow House"` → `yellowhouse` — unless you set an explicit `id`.
-Passwords may instead come from environment variables
-`CALDAV_CAL_0_PASSWORD`, `CALDAV_CAL_1_PASSWORD`, … (index = list order), which
-take precedence over the file.
+
+Passwords are resolved per calendar, highest precedence first:
+
+1. `CALDAV_CAL_<n>_PASSWORD` environment variable (`n` = list order from 0)
+2. `password_file`: path to a file holding the password (newline stripped, `~`
+   expanded) — keeps the secret out of `config.yaml`
+3. inline `password`
 
 ## Development
 

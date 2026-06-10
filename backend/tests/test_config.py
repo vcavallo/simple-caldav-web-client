@@ -95,6 +95,66 @@ def test_password_env_var_used_when_file_omits_it(tmp_path, monkeypatch):
     assert config.calendars[0].password == "only-in-env"
 
 
+def test_password_from_file(tmp_path):
+    pwfile = tmp_path / "secret"
+    pwfile.write_text("file-secret\n")  # trailing newline must be stripped
+    path = write_config(tmp_path, f"""
+        calendars:
+          - name: "Personal"
+            url: "https://baikal.example/dav.php/calendars/user/personal/"
+            username: "user"
+            password_file: "{pwfile}"
+            color: "#4A90D9"
+    """)
+    config = load_config(path)
+    assert config.calendars[0].password == "file-secret"
+
+
+def test_password_file_overrides_inline_password(tmp_path):
+    pwfile = tmp_path / "secret"
+    pwfile.write_text("from-file")
+    path = write_config(tmp_path, f"""
+        calendars:
+          - name: "Personal"
+            url: "https://baikal.example/dav.php/calendars/user/personal/"
+            username: "user"
+            password: "inline"
+            password_file: "{pwfile}"
+            color: "#4A90D9"
+    """)
+    config = load_config(path)
+    assert config.calendars[0].password == "from-file"
+
+
+def test_env_var_overrides_password_file(tmp_path, monkeypatch):
+    pwfile = tmp_path / "secret"
+    pwfile.write_text("from-file")
+    monkeypatch.setenv("CALDAV_CAL_0_PASSWORD", "from-env")
+    path = write_config(tmp_path, f"""
+        calendars:
+          - name: "Personal"
+            url: "https://baikal.example/dav.php/calendars/user/personal/"
+            username: "user"
+            password_file: "{pwfile}"
+            color: "#4A90D9"
+    """)
+    config = load_config(path)
+    assert config.calendars[0].password == "from-env"
+
+
+def test_missing_password_file_raises(tmp_path):
+    path = write_config(tmp_path, f"""
+        calendars:
+          - name: "Personal"
+            url: "https://baikal.example/dav.php/calendars/user/personal/"
+            username: "user"
+            password_file: "{tmp_path / 'nope'}"
+            color: "#4A90D9"
+    """)
+    with pytest.raises(FileNotFoundError):
+        load_config(path)
+
+
 def test_get_calendar_by_id(tmp_path):
     path = write_config(tmp_path, """
         calendars:
