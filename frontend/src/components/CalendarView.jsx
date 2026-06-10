@@ -10,7 +10,7 @@ import { toFullCalendarEvent } from '../lib/events'
 // Wraps FullCalendar. The `events` prop is a function so FullCalendar drives
 // the /api/events fetch for whatever range the current view needs.
 const CalendarView = forwardRef(function CalendarView(
-  { calendars, hidden, onEventClick, onDateClick, onSelect },
+  { calendars, hidden, onEventClick, onDateClick, onSelect, onLoadErrors },
   ref,
 ) {
   const calendarsById = Object.fromEntries(calendars.map((c) => [c.id, c]))
@@ -20,6 +20,7 @@ const CalendarView = forwardRef(function CalendarView(
     const calendarsParam = visibleIds
     if (calendarsParam.length === 0) {
       success([])
+      onLoadErrors?.([])
       return
     }
     api
@@ -28,7 +29,13 @@ const CalendarView = forwardRef(function CalendarView(
         end: info.endStr.slice(0, 19),
         calendars: calendarsParam,
       })
-      .then((events) => success(events.map((e) => toFullCalendarEvent(e, calendarsById))))
+      .then((data) => {
+        // Backend returns { events, errors }; one bad calendar no longer
+        // fails the whole fetch.
+        const events = data.events || []
+        success(events.map((e) => toFullCalendarEvent(e, calendarsById)))
+        onLoadErrors?.(data.errors || [])
+      })
       .catch(failure)
   }
 

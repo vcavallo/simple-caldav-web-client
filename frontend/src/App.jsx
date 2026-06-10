@@ -26,6 +26,7 @@ export default function App() {
   const [popover, setPopover] = useState(null) // { event, position }
   const [form, setForm] = useState(null) // form state or null
   const [serverError, setServerError] = useState(null)
+  const [loadErrors, setLoadErrors] = useState([]) // per-calendar fetch failures
 
   const health = useQuery({
     queryKey: ['health'],
@@ -142,6 +143,13 @@ export default function App() {
       />
 
       <main className="main">
+        {loadErrors.length > 0 && (
+          <div className="banner error">
+            {loadErrors
+              .map((e) => `${calendarsById[e.calendar_id]?.name || e.calendar_id}: ${e.message}`)
+              .join(' · ')}
+          </div>
+        )}
         <CalendarView
           ref={calendarRef}
           calendars={calendars}
@@ -149,6 +157,7 @@ export default function App() {
           onEventClick={(event, position) => setPopover({ event, position })}
           onDateClick={onDateClick}
           onSelect={onSelect}
+          onLoadErrors={setLoadErrors}
         />
       </main>
 

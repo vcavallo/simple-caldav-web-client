@@ -19,7 +19,14 @@ from backend.caldav_client import (
     NotFoundError,
 )
 from backend.config import Config, load_config
-from backend.models import CalendarInfo, Event, EventCreate, EventDelete, EventUpdate
+from backend.models import (
+    CalendarInfo,
+    Event,
+    EventCreate,
+    EventDelete,
+    EventsResponse,
+    EventUpdate,
+)
 
 app = FastAPI(title="CalDAV Web Client")
 
@@ -77,7 +84,7 @@ async def list_calendars(client: CalDavClient = Depends(get_client)):
     return client.list_calendars()
 
 
-@app.get("/api/events", response_model=List[Event])
+@app.get("/api/events", response_model=EventsResponse)
 async def list_events(
     start: str = Query(...),
     end: str = Query(...),

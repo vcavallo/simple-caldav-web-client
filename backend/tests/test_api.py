@@ -15,6 +15,7 @@ class FakeClient:
         self._store = {}  # id -> event dict
         self._counter = 0
         self.fail_with = None  # exception instance to raise on next mutation
+        self.errors = []  # per-calendar errors to surface from get_events
 
     def list_calendars(self):
         return [
@@ -26,7 +27,7 @@ class FakeClient:
         events = list(self._store.values())
         if calendar_ids:
             events = [e for e in events if e["calendar_id"] in calendar_ids]
-        return events
+        return {"events": events, "errors": self.errors}
 
     async def create_event(self, data):
         if self.fail_with:
@@ -140,7 +141,7 @@ def test_create_then_list_event(client):
 
     r2 = client.get("/api/events?start=2025-09-01T00:00:00&end=2025-09-30T00:00:00")
     assert r2.status_code == 200
-    events = r2.json()
+    events = r2.json()["events"]
     assert len(events) == 1
     assert events[0]["title"] == "Team meeting"
 
@@ -167,8 +168,22 @@ def test_events_filtered_by_calendar(client, fake):
         "start": "2025-09-16T12:00:00", "end": "2025-09-16T13:00:00", "allDay": False,
     })
     r = client.get("/api/events?start=2025-09-01T00:00:00&end=2025-09-30T00:00:00&calendars=work")
-    titles = [e["title"] for e in r.json()]
+    titles = [e["title"] for e in r.json()["events"]]
     assert titles == ["W"]
+
+
+def test_events_response_reports_calendar_errors(client, fake):
+    # A working calendar's events still come back even when another failed.
+    client.post("/api/events", json={
+        "calendar_id": "personal", "title": "Survivor",
+        "start": "2025-09-16T10:00:00", "end": "2025-09-16T11:00:00", "allDay": False,
+    })
+    fake.errors = [{"calendar_id": "work", "message": "unreachable"}]
+    r = client.get("/api/events?start=2025-09-01T00:00:00&end=2025-09-30T00:00:00")
+    assert r.status_code == 200
+    body = r.json()
+    assert [e["title"] for e in body["events"]] == ["Survivor"]
+    assert body["errors"] == [{"calendar_id": "work", "message": "unreachable"}]
 
 
 def test_update_event(client):
@@ -199,7 +214,7 @@ def test_delete_event(client):
     })
     assert r.status_code == 204, r.text
     remaining = client.get("/api/events?start=2025-09-01T00:00:00&end=2025-09-30T00:00:00").json()
-    assert remaining == []
+    assert remaining["events"] == []
 
 
 def test_etag_conflict_returns_412(client, fake):

@@ -1,7 +1,7 @@
 """Pydantic models for request/response bodies."""
 from __future__ import annotations
 
-from typing import Optional
+from typing import List, Optional
 
 from pydantic import BaseModel, Field
 
@@ -45,3 +45,15 @@ class Event(EventBase):
     url: str = ""
     etag: str = ""
     recurring: bool = False
+
+
+class CalendarError(BaseModel):
+    calendar_id: str
+    message: str
+
+
+class EventsResponse(BaseModel):
+    # Events from calendars that loaded successfully, plus per-calendar errors
+    # for any that failed — so one bad calendar never blanks the whole view.
+    events: List[Event]
+    errors: List[CalendarError] = []

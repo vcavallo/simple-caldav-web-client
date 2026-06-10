@@ -233,7 +233,7 @@ class CalDavClient:
         return events
 
     async def get_events(self, start: str, end: str,
-                         calendar_ids: Optional[List[str]] = None) -> List[dict]:
+                         calendar_ids: Optional[List[str]] = None) -> dict:
         start_dt = datetime.fromisoformat(start)
         end_dt = datetime.fromisoformat(end)
 
@@ -241,18 +241,22 @@ class CalDavClient:
             c for c in self.config.calendars
             if not calendar_ids or c.id in calendar_ids
         ]
-        # Fire one blocking search per calendar concurrently.
+        # Fire one blocking search per calendar concurrently. A failing calendar
+        # is reported separately rather than failing the whole request, so one
+        # misconfigured/unreachable calendar never blanks the entire view.
         results = await asyncio.gather(
             *(asyncio.to_thread(self._fetch_one, cal, start_dt, end_dt)
               for cal in targets),
             return_exceptions=True,
         )
-        merged: List[dict] = []
-        for res in results:
+        events: List[dict] = []
+        errors: List[dict] = []
+        for cal, res in zip(targets, results):
             if isinstance(res, Exception):
-                raise res
-            merged.extend(res)
-        return merged
+                errors.append({"calendar_id": cal.id, "message": str(res)})
+            else:
+                events.extend(res)
+        return {"events": events, "errors": errors}
 
     # -- write ------------------------------------------------------------ #
     def _create_sync(self, data: EventCreate) -> dict:

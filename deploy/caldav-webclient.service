@@ -1,15 +1,27 @@
-# systemd user unit. Install to ~/.config/systemd/user/caldav-webclient.service
-# then: systemctl --user daemon-reload && systemctl --user enable --now caldav-webclient
+# systemd *user* unit for this NixOS box.
+# Install:
+#   cp deploy/caldav-webclient.service ~/.config/systemd/user/
+#   systemctl --user daemon-reload
+#   systemctl --user enable --now caldav-webclient
+#   loginctl enable-linger "$USER"   # survive logout/reboot
+#
+# Runs uvicorn inside the project's nix-shell so the Python deps come from
+# shell.nix. Adjust the paths/port below for your checkout.
 [Unit]
 Description=CalDAV Web Client
-After=network.target
+After=network-online.target
+Wants=network-online.target
 
 [Service]
-WorkingDirectory=/home/user/caldav-web-client
-ExecStart=/home/user/.venv/caldav-webclient/bin/uvicorn backend.main:app --host 0.0.0.0 --port 8080
+Type=simple
+WorkingDirectory=/home/vcavallo/src/caldav-web-client
+Environment=CALDAV_CONFIG=/home/vcavallo/src/caldav-web-client/config.yaml
+# User services don't inherit the login shell env, so NIX_PATH must be explicit
+# for `import <nixpkgs>` in shell.nix to resolve. Check yours with: echo $NIX_PATH
+Environment=NIX_PATH=nixpkgs=flake:nixpkgs:/nix/var/nix/profiles/per-user/root/channels
+ExecStart=/run/current-system/sw/bin/nix-shell /home/vcavallo/src/caldav-web-client/shell.nix --run "uvicorn backend.main:app --host 0.0.0.0 --port 8088"
 Restart=on-failure
-# Secrets (CALDAV_CAL_0_PASSWORD=...) live here, not in the repo:
-EnvironmentFile=-/home/user/.config/caldav-webclient/env
+RestartSec=3
 
 [Install]
 WantedBy=default.target
