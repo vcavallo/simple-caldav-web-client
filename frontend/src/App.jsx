@@ -82,7 +82,14 @@ export default function App() {
   // --- save / delete ---
   const handleSave = ({ id, payload }) => {
     setServerError(null)
-    const onDone = { onSuccess: () => setForm(null) }
+    // FullCalendar owns the event fetch, so re-fetch it (not React Query) once
+    // the mutation succeeds so the new/edited event shows immediately.
+    const onDone = {
+      onSuccess: () => {
+        setForm(null)
+        refetchEvents()
+      },
+    }
     if (id) {
       const original = form
       update.mutate(
@@ -97,7 +104,12 @@ export default function App() {
   const handleDelete = (event) => {
     remove.mutate(
       { id: event.id, url: event.url, etag: event.etag },
-      { onSuccess: () => setPopover(null) },
+      {
+        onSuccess: () => {
+          setPopover(null)
+          refetchEvents()
+        },
+      },
     )
   }
 
