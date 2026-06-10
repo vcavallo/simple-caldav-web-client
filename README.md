@@ -3,7 +3,7 @@
 A self-hosted, single-user web calendar for viewing and editing events on a
 Baikal (or any standard CalDAV) server. A FastAPI proxy holds the CalDAV
 credentials and exposes a small JSON REST API; a React + FullCalendar SPA
-renders month / week / agenda views.
+renders month / week / day / agenda views.
 
 ```
 [Browser] → REST/JSON → [FastAPI proxy] → CalDAV (HTTP+XML, Basic Auth) → [Baikal]
@@ -14,12 +14,13 @@ that CalDAV servers don't send permissive CORS headers.
 
 ## Features
 
-- Month / week / agenda views (FullCalendar)
+- Month / week / day / agenda views (FullCalendar); the day view is a single-day
+  time grid, handy for timeblocking
 - Multiple calendars from one Baikal instance, color-coded, toggleable
 - Create / edit / delete flat (non-recurring) events
 - Recurring events are **displayed** (expanded per-occurrence) but not editable in v1
 - ETag-based optimistic concurrency (`If-Match`) so concurrent edits are detected
-- Keyboard-friendly: `M`/`W`/`A` views, `J`/`K` or arrows to navigate, `T` today, `N` new
+- Keyboard-friendly: `M`/`W`/`D`/`A` views, `J`/`K` or arrows to navigate, `T` today, `N` new
 - No cloud dependencies; meant to run on the local/Tailscale network
 
 ## Layout

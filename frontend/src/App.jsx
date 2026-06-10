@@ -137,6 +137,7 @@ export default function App() {
       switch (e.key.toLowerCase()) {
         case 'm': apiCal.changeView('dayGridMonth'); break
         case 'w': apiCal.changeView('timeGridWeek'); break
+        case 'd': apiCal.changeView('timeGridDay'); break
         case 'a': apiCal.changeView('listWeek'); break
         case 't': apiCal.today(); break
         case 'j': case 'arrowleft': apiCal.prev(); break

@@ -53,7 +53,7 @@ const CalendarView = forwardRef(function CalendarView(
         headerToolbar={{
           left: 'prev,next today',
           center: 'title',
-          right: 'dayGridMonth,timeGridWeek,listWeek',
+          right: 'dayGridMonth,timeGridWeek,timeGridDay,listWeek',
         }}
         views={{ listWeek: { duration: { weeks: 2 }, buttonText: 'agenda' } }}
         height="100%"
