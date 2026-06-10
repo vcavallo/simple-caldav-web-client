@@ -19,8 +19,8 @@ def test_load_config_parses_calendars(tmp_path):
             username: "user"
             password: "pw1"
             color: "#4A90D9"
-          - name: "Yellow House"
-            url: "https://baikal.example/dav.php/calendars/user/yellowhouse/"
+          - name: "Work"
+            url: "https://baikal.example/dav.php/calendars/user/work/"
             username: "user"
             password: "pw2"
             color: "#F5A623"
@@ -38,20 +38,20 @@ def test_load_config_parses_calendars(tmp_path):
 def test_calendar_id_derived_from_name(tmp_path):
     path = write_config(tmp_path, """
         calendars:
-          - name: "Yellow House"
-            url: "https://baikal.example/dav.php/calendars/user/yellowhouse/"
+          - name: "Side Projects"
+            url: "https://baikal.example/dav.php/calendars/user/sideprojects/"
             username: "user"
             password: "pw"
             color: "#F5A623"
-          - name: "Corner Bar"
-            url: "https://baikal.example/dav.php/calendars/user/cornerbar/"
+          - name: "Book Club"
+            url: "https://baikal.example/dav.php/calendars/user/bookclub/"
             username: "user"
             password: "pw"
             color: "#7ED321"
     """)
     config = load_config(path)
-    assert config.calendars[0].id == "yellowhouse"
-    assert config.calendars[1].id == "cornerbar"
+    assert config.calendars[0].id == "sideprojects"
+    assert config.calendars[1].id == "bookclub"
 
 
 def test_explicit_id_overrides_derived(tmp_path):

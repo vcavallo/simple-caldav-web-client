@@ -14,12 +14,12 @@ Wants=network-online.target
 
 [Service]
 Type=simple
-WorkingDirectory=/home/vcavallo/src/caldav-web-client
-Environment=CALDAV_CONFIG=/home/vcavallo/src/caldav-web-client/config.yaml
+WorkingDirectory=/home/user/src/caldav-web-client
+Environment=CALDAV_CONFIG=/home/user/src/caldav-web-client/config.yaml
 # User services don't inherit the login shell env, so NIX_PATH must be explicit
 # for `import <nixpkgs>` in shell.nix to resolve. Check yours with: echo $NIX_PATH
 Environment=NIX_PATH=nixpkgs=flake:nixpkgs:/nix/var/nix/profiles/per-user/root/channels
-ExecStart=/run/current-system/sw/bin/nix-shell /home/vcavallo/src/caldav-web-client/shell.nix --run "uvicorn backend.main:app --host 0.0.0.0 --port 8088"
+ExecStart=/run/current-system/sw/bin/nix-shell /home/user/src/caldav-web-client/shell.nix --run "uvicorn backend.main:app --host 0.0.0.0 --port 8088"
 Restart=on-failure
 RestartSec=3
 

@@ -42,7 +42,7 @@ cp config.example.yaml config.yaml
 ```
 
 Each calendar's `id` is derived from its name (lowercased, alphanumerics only) —
-e.g. `"Yellow House"` → `yellowhouse` — unless you set an explicit `id`.
+e.g. `"Side Projects"` → `sideprojects` — unless you set an explicit `id`.
 
 Passwords are resolved per calendar, highest precedence first:
 
