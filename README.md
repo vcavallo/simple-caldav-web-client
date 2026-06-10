@@ -1,5 +1,8 @@
 # CalDAV Web Client
 
+<img width="2859" height="1999" alt="image" src="https://github.com/user-attachments/assets/a37c4630-a3ed-44ea-8753-3ad669d971bf" />
+
+
 A self-hosted, single-user web calendar for viewing and editing events on a
 Baikal (or any standard CalDAV) server. A FastAPI proxy holds the CalDAV
 credentials and exposes a small JSON REST API; a React + FullCalendar SPA
