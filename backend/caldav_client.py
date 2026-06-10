@@ -215,15 +215,22 @@ class CalDavClient:
         ]
 
     def _fetch_one(self, cal: Calendar, start: datetime, end: datetime) -> List[dict]:
+        from caldav.elements import dav
+
         try:
             calendar = self._get_caldav_calendar(cal)
-            found = calendar.search(start=start, end=end, event=True, expand=False)
+            # Explicitly request getetag; without it the search results carry no
+            # ETag, which breaks If-Match on later edit/delete.
+            found = calendar.search(
+                start=start, end=end, event=True, expand=False,
+                props=[dav.GetEtag()],
+            )
         except Exception as exc:  # noqa: BLE001 - normalized below
             raise self._map_error(exc)
 
         events: List[dict] = []
         for obj in found:
-            etag = getattr(obj, "etag", "") or ""
+            etag = self._etag_of(obj)
             url = str(getattr(obj, "url", "") or "")
             ical = icalendar.Calendar.from_ical(obj.data)
             for vevent in ical.walk("VEVENT"):
@@ -271,7 +278,7 @@ class CalDavClient:
         except Exception as exc:  # noqa: BLE001
             raise self._map_error(exc)
 
-        etag = getattr(obj, "etag", "") or ""
+        etag = self._etag_of(obj)
         url = str(getattr(obj, "url", "") or "")
         vevent = icalendar.Calendar.from_ical(obj.data).walk("VEVENT")[0]
         return vevent_to_event(vevent, cal.id, etag=etag, url=url)
@@ -294,7 +301,7 @@ class CalDavClient:
             obj = self._put(data.url, ical, if_match=data.etag)
         except Exception as exc:  # noqa: BLE001
             raise self._map_error(exc)
-        etag = getattr(obj, "etag", "") or data.etag
+        etag = self._etag_of(obj) or data.etag
         result = vevent_to_event(
             icalendar.Calendar.from_ical(ical).walk("VEVENT")[0],
             cal.id, etag=etag, url=data.url,
@@ -352,6 +359,26 @@ class CalDavClient:
         resp = dav.request(url, "DELETE", headers=headers)
         self._raise_for_status(resp)
         return resp
+
+    @staticmethod
+    def _etag_of(obj) -> str:
+        """Read a CalDAV object's ETag.
+
+        caldav's search() does not populate an ``.etag`` attribute, so prefer the
+        getetag prop (requested explicitly in the search), then fall back to a
+        cached property lookup for objects returned by save_event/put.
+        """
+        from caldav.elements import dav
+
+        tag = dav.GetEtag.tag
+        props = getattr(obj, "props", None) or {}
+        etag = props.get(tag)
+        if not etag:
+            try:
+                etag = obj.get_property(dav.GetEtag(), use_cached=True)
+            except Exception:  # noqa: BLE001 - etag is best-effort here
+                etag = None
+        return etag or ""
 
     @staticmethod
     def _raise_for_status(resp) -> None:
