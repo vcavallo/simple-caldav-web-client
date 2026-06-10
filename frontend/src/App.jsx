@@ -50,6 +50,14 @@ export default function App() {
   const toggleCalendar = (id) =>
     setHidden((h) => (h.includes(id) ? h.filter((x) => x !== id) : [...h, id]))
 
+  // Stable + idempotent: returns the previous value when the errors are
+  // unchanged so React bails out instead of re-rendering on every fetch.
+  const handleLoadErrors = useCallback((errs) => {
+    setLoadErrors((prev) =>
+      JSON.stringify(prev) === JSON.stringify(errs) ? prev : errs,
+    )
+  }, [])
+
   // --- form open helpers ---
   const openCreate = useCallback(
     (prefill = {}) => {
@@ -157,7 +165,7 @@ export default function App() {
           onEventClick={(event, position) => setPopover({ event, position })}
           onDateClick={onDateClick}
           onSelect={onSelect}
-          onLoadErrors={setLoadErrors}
+          onLoadErrors={handleLoadErrors}
         />
       </main>
 
