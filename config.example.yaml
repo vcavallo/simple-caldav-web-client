@@ -1,0 +1,24 @@
+# Copy to config.yaml (gitignored) and edit with your Baikal credentials.
+#
+# Each calendar's `id` is optional; if omitted it is derived from the name
+# (lowercased, alphanumerics only). Passwords may instead be supplied via env
+# vars CALDAV_CAL_0_PASSWORD, CALDAV_CAL_1_PASSWORD, ... (index = list order).
+
+calendars:
+  - name: "Personal"
+    url: "https://baikal.yourdomain.tld/dav.php/calendars/user/personal/"
+    username: "user"
+    password: "password"
+    color: "#4A90D9"
+
+  - name: "Yellow House"
+    url: "https://baikal.yourdomain.tld/dav.php/calendars/user/yellowhouse/"
+    username: "user"
+    password: "password"
+    color: "#F5A623"
+
+  - name: "Corner Bar"
+    url: "https://baikal.yourdomain.tld/dav.php/calendars/user/cornerbar/"
+    username: "user"
+    password: "password"
+    color: "#7ED321"

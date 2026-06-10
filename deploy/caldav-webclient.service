@@ -1,0 +1,15 @@
+# systemd user unit. Install to ~/.config/systemd/user/caldav-webclient.service
+# then: systemctl --user daemon-reload && systemctl --user enable --now caldav-webclient
+[Unit]
+Description=CalDAV Web Client
+After=network.target
+
+[Service]
+WorkingDirectory=/home/user/caldav-web-client
+ExecStart=/home/user/.venv/caldav-webclient/bin/uvicorn backend.main:app --host 0.0.0.0 --port 8080
+Restart=on-failure
+# Secrets (CALDAV_CAL_0_PASSWORD=...) live here, not in the repo:
+EnvironmentFile=-/home/user/.config/caldav-webclient/env
+
+[Install]
+WantedBy=default.target
