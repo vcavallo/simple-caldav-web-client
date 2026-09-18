@@ -62,10 +62,20 @@ caldav, icalendar, pytest and friends.
 
 ### Backend
 
+This project uses [direnv](https://direnv.net/) with `shell.nix` for automatic Python
+environment management.
+
+**If you have direnv installed and configured** (recommended):
 ```bash
-# In the repo root:
+cd /path/to/caldav-web-client
+python -m pytest                # run the test suite (env loaded automatically)
+uvicorn backend.main:app --reload --port 8080
+```
+
+**Alternatively, using nix-shell**:
+```bash
 nix-shell                       # drops you into a shell with all backend deps
-python -m pytest                # run the test suite
+python -m pytest
 uvicorn backend.main:app --reload --port 8080
 ```
 
@@ -90,11 +100,17 @@ npm run dev        # Vite dev server on :5173, proxies /api to :8080
 npm test           # vitest unit tests
 ```
 
+Note: For frontend development, ensure `node` and `npm` are available in your PATH
+(separate from the Python environment). Direnv does not manage NodeJS tooling.
+
 ## Tests
 
 - **Backend** (`pytest`): config loading + env overrides, the pure
   iCalendar↔JSON conversion and recurrence expansion, and every API endpoint
   (using an injected in-memory fake CalDAV client, so no server is required).
+
+  Run with: `python -m pytest`
+
 - **Frontend** (`vitest`): the `api.js` fetch wrapper and the pure event-form /
   FullCalendar helpers in `lib/events.js`.
 
