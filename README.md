@@ -113,11 +113,33 @@ Then reach it over Tailscale at `http://<host>:8080`.
 
 ### Deployment options
 
-- **systemd** — see `deploy/caldav-webclient.service` (user unit). Put secrets in
-  the `EnvironmentFile`.
-- **NixOS** — see `deploy/nixos-module.nix` for a `services.caldav-webclient`
-  module wrapping uvicorn.
-- **Docker** — `docker compose up --build` (mounts `config.yaml` read-only).
+ - **systemd** — see `deploy/caldav-webclient.service` (user unit). Put secrets in
+   the `EnvironmentFile`.
+ - **NixOS** — see `deploy/nixos-module.nix` for a `services.caldav-webclient`
+   module wrapping uvicorn.
+
+### NixOS with Home Manager
+
+This project includes a Home Manager module at `deploy/modules/home/caldav-webclient.nix`
+that sets up a systemd user service using a Nix-built Python environment.
+
+**To deploy changes:**
+1. Make your code changes in the checkout
+2. Rebuild your NixOS configuration:
+
+   ```bash
+   # Rebuild system (includes home-manager config)
+   sudo nixos-rebuild switch
+   
+   # Or just rebuild home-manager for your user
+   home-manager switch
+   ```
+
+The service will automatically pick up code changes from your checkout
+(`~/src/caldav-web-client`) since the Python environment reads directly from
+that directory at runtime.
+
+### Docker
 
 ## API reference
 
