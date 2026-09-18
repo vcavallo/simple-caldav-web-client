@@ -7,6 +7,7 @@ Split into two layers:
 * ``CalDavClient`` which talks to a real CalDAV server via the ``caldav``
   library. It is dependency-injected into the API so tests can swap in a fake.
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -56,7 +57,9 @@ def _fmt(value) -> str:
     if _is_all_day(value):
         return value.isoformat()  # "2025-09-20"
     if isinstance(value, datetime):
-        return value.replace(microsecond=0).isoformat()  # "2025-09-15T14:00:00[+offset]"
+        return value.replace(
+            microsecond=0
+        ).isoformat()  # "2025-09-15T14:00:00[+offset]"
     return str(value)
 
 
@@ -68,6 +71,43 @@ def _to_naive_datetime(value) -> datetime:
     return value
 
 
+def _normalize_rrule(rule_text: str) -> str:
+    """Strip timezone info from RRULE UNTIL to avoid UTC requirement.
+
+    When DTSTART is timezone-aware, rrulestr() requires UNTIL to be in UTC.
+    Since we convert DTSTART to naive datetime, we also strip timezone context
+    from UNTIL values to maintain consistency.
+    """
+    if "UNTIL" not in rule_text:
+        return rule_text
+
+    parts = []
+    skip_tzid = False
+    for part in rule_text.split(";"):
+        if skip_tzid:
+            skip_tzid = False
+            continue
+
+        if part.startswith("UNTIL="):
+            until_val = part[6:]
+            try:
+                until_dt = datetime.strptime(until_val, "%Y%m%dT%H%M%S")
+                part = f"UNTIL={until_dt.strftime('%Y%m%dT%H%M%S')}"
+            except ValueError:
+                try:
+                    until_val_no_tz = until_val.rstrip("Z")
+                    until_dt = datetime.strptime(until_val_no_tz, "%Y%m%dT%H%M%S")
+                    part = f"UNTIL={until_dt.strftime('%Y%m%dT%H%M%S')}"
+                except ValueError:
+                    pass
+        elif part == "TZID=America/New_York" or part.startswith("TZID="):
+            skip_tzid = True
+            continue
+        parts.append(part)
+
+    return ";".join(parts)
+
+
 def _event_duration(vevent) -> timedelta:
     dtstart = vevent.decoded("DTSTART")
     if "DTEND" in vevent:
@@ -77,8 +117,9 @@ def _event_duration(vevent) -> timedelta:
     return timedelta(days=1) if _is_all_day(dtstart) else timedelta(hours=1)
 
 
-def vevent_to_event(vevent, calendar_id: str, etag: Optional[str] = None,
-                    url: Optional[str] = None) -> dict:
+def vevent_to_event(
+    vevent, calendar_id: str, etag: Optional[str] = None, url: Optional[str] = None
+) -> dict:
     """Convert a single icalendar VEVENT component to our event dict."""
     dtstart = vevent.decoded("DTSTART")
     all_day = _is_all_day(dtstart)
@@ -103,9 +144,14 @@ def vevent_to_event(vevent, calendar_id: str, etag: Optional[str] = None,
     }
 
 
-def expand_event(vevent, calendar_id: str, range_start: datetime,
-                 range_end: datetime, etag: Optional[str] = None,
-                 url: Optional[str] = None) -> List[dict]:
+def expand_event(
+    vevent,
+    calendar_id: str,
+    range_start: datetime,
+    range_end: datetime,
+    etag: Optional[str] = None,
+    url: Optional[str] = None,
+) -> List[dict]:
     """Return one event dict per occurrence of ``vevent`` inside the range.
 
     Non-recurring events yield a single dict. Recurring events are expanded
@@ -121,6 +167,7 @@ def expand_event(vevent, calendar_id: str, range_start: datetime,
     duration = _event_duration(vevent)
 
     rule_text = vevent["RRULE"].to_ical().decode()
+    rule_text = _normalize_rrule(rule_text)
     rule = rrulestr(rule_text, dtstart=start_dt)
     occurrences = rule.between(range_start, range_end, inc=True)
 
@@ -186,7 +233,9 @@ class CalDavClient:
 
         if cal.id not in self._calendars:
             dav = caldav.DAVClient(
-                url=cal.url, username=cal.username, password=cal.password,
+                url=cal.url,
+                username=cal.username,
+                password=cal.password,
             )
             self._calendars[cal.id] = dav.calendar(url=cal.url)
         return self._calendars[cal.id]
@@ -222,7 +271,10 @@ class CalDavClient:
             # Explicitly request getetag; without it the search results carry no
             # ETag, which breaks If-Match on later edit/delete.
             found = calendar.search(
-                start=start, end=end, event=True, expand=False,
+                start=start,
+                end=end,
+                event=True,
+                expand=False,
                 props=[dav.GetEtag()],
             )
         except Exception as exc:  # noqa: BLE001 - normalized below
@@ -239,21 +291,23 @@ class CalDavClient:
                 )
         return events
 
-    async def get_events(self, start: str, end: str,
-                         calendar_ids: Optional[List[str]] = None) -> dict:
+    async def get_events(
+        self, start: str, end: str, calendar_ids: Optional[List[str]] = None
+    ) -> dict:
         start_dt = datetime.fromisoformat(start)
         end_dt = datetime.fromisoformat(end)
 
         targets = [
-            c for c in self.config.calendars
-            if not calendar_ids or c.id in calendar_ids
+            c for c in self.config.calendars if not calendar_ids or c.id in calendar_ids
         ]
         # Fire one blocking search per calendar concurrently. A failing calendar
         # is reported separately rather than failing the whole request, so one
         # misconfigured/unreachable calendar never blanks the entire view.
         results = await asyncio.gather(
-            *(asyncio.to_thread(self._fetch_one, cal, start_dt, end_dt)
-              for cal in targets),
+            *(
+                asyncio.to_thread(self._fetch_one, cal, start_dt, end_dt)
+                for cal in targets
+            ),
             return_exceptions=True,
         )
         events: List[dict] = []
@@ -294,8 +348,12 @@ class CalDavClient:
         if cal is None:
             raise NotFoundError(f"Unknown calendar for event {event_id}")
 
-        create_shape = EventCreate(calendar_id=cal.id, **data.model_dump(
-            include={"title", "start", "end", "allDay", "location", "description"}))
+        create_shape = EventCreate(
+            calendar_id=cal.id,
+            **data.model_dump(
+                include={"title", "start", "end", "allDay", "location", "description"}
+            ),
+        )
         ical = build_ical(create_shape, uid=event_id, dtstamp=datetime.utcnow())
         try:
             obj = self._put(data.url, ical, if_match=data.etag)
@@ -304,7 +362,9 @@ class CalDavClient:
         etag = self._etag_of(obj) or data.etag
         result = vevent_to_event(
             icalendar.Calendar.from_ical(ical).walk("VEVENT")[0],
-            cal.id, etag=etag, url=data.url,
+            cal.id,
+            etag=etag,
+            url=data.url,
         )
         return result
 
@@ -335,7 +395,9 @@ class CalDavClient:
         import caldav
 
         return caldav.DAVClient(
-            url=cal.url, username=cal.username, password=cal.password,
+            url=cal.url,
+            username=cal.username,
+            password=cal.password,
         )
 
     def _put(self, url: str, ical: str, if_match: str):

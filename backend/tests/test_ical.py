@@ -1,4 +1,5 @@
 """Tests for the pure iCalendar <-> event-dict conversion layer."""
+
 from datetime import date, datetime
 
 import icalendar
@@ -8,6 +9,7 @@ from backend.caldav_client import (
     vevent_to_event,
     expand_event,
     build_ical,
+    _normalize_rrule,
 )
 from backend.models import EventCreate
 
@@ -77,20 +79,28 @@ def test_all_day_event_uses_date_values():
 
 
 def test_missing_optional_fields_default_empty():
-    ev = vevent_to_event(make_vevent("""\
+    ev = vevent_to_event(
+        make_vevent("""\
 BEGIN:VEVENT
 UID:bare@baikal
 SUMMARY:Bare
 DTSTART:20250915T140000
 DTEND:20250915T150000
 END:VEVENT
-"""), calendar_id="personal")
+"""),
+        calendar_id="personal",
+    )
     assert ev["location"] == ""
     assert ev["description"] == ""
 
 
 def test_etag_attached_when_provided():
-    ev = vevent_to_event(make_vevent(TIMED), calendar_id="personal", etag='"xyz"', url="/dav/personal/abc123.ics")
+    ev = vevent_to_event(
+        make_vevent(TIMED),
+        calendar_id="personal",
+        etag='"xyz"',
+        url="/dav/personal/abc123.ics",
+    )
     assert ev["etag"] == '"xyz"'
     assert ev["url"] == "/dav/personal/abc123.ics"
 
@@ -182,3 +192,26 @@ def test_build_ical_all_day_uses_date_value():
     comp = cal.walk("VEVENT")[0]
     assert comp.decoded("DTSTART") == date(2025, 12, 25)
     assert comp.decoded("DTEND") == date(2025, 12, 26)
+
+def test_normalize_rrule_strips_timezone_from_until():
+    _rrule = "FREQ=WEEKLY;UNTIL=20251231T235959;TZID=America/New_York"
+    normalized = _normalize_rrule(_rrule)
+    assert normalized == "FREQ=WEEKLY;UNTIL=20251231T235959"
+
+
+def test_normalize_rrule_handles_utc_until():
+    _rrule = "FREQ=WEEKLY;UNTIL=20251231T235959Z"
+    normalized = _normalize_rrule(_rrule)
+    assert normalized == "FREQ=WEEKLY;UNTIL=20251231T235959"
+
+
+def test_normalize_rrule_preserves_naive_until():
+    _rrule = "FREQ=WEEKLY;UNTIL=20251231T235959"
+    normalized = _normalize_rrule(_rrule)
+    assert normalized == "FREQ=WEEKLY;UNTIL=20251231T235959"
+
+
+def test_normalize_rrule_without_until():
+    _rrule = "FREQ=WEEKLY;COUNT=4"
+    normalized = _normalize_rrule(_rrule)
+    assert normalized == "FREQ=WEEKLY;COUNT=4"
